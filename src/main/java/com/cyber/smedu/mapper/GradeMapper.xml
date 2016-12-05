@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cyber.smedu.mapper.GradeMapper">
+
+<!-- 관리자 학생 성적관리 총 이수과목성적 리스트 -->
+<!-- 학생 마이페이지 이수학점 리스트 -->
+	<select id="adminStudentFinalGrade"
+		parameterType="String"
+		resultType="com.cyber.smedu.grade.domain.FinalGradeDomain">
+	SELECT	
+		(SELECT c.year FROM cardinal c WHERE st.cardinal_code=c.cardinal_code)as year,
+		(SELECT c.semester FROM cardinal c WHERE st.cardinal_code=c.cardinal_code) as semester,
+		(SELECT c.cardinal FROM cardinal c WHERE st.cardinal_code=c.cardinal_code) as cardinal,
+		(SELECT c.class_start_day FROM cardinal c WHERE st.cardinal_code=c.cardinal_code) as classStartDay,
+		(SELECT c.class_end_day FROM cardinal c WHERE st.cardinal_code=c.cardinal_code) as classEndDay,
+		(SELECT subject_sort FROM subject s WHERE s.subject_code = (SELECT subject_code FROM open_subject ss WHERE ss.open_subject_code = st.open_subject_code)) as subjectSort,
+		(SELECT subject_name FROM subject s WHERE s.subject_code = (SELECT subject_code FROM open_subject ss WHERE ss.open_subject_code = st.open_subject_code)) as subjectName,
+		(SELECT subject_credit FROM subject s WHERE s.subject_code = (SELECT subject_code FROM open_subject ss WHERE ss.open_subject_code = st.open_subject_code)) as subjectCredit,
+		st.final_result as finalResult,
+		st.complete_confirmation as completeConfirmation,
+		(SELECT user_name FROM user u WHERE u.user_code = (SELECT p.user_code FROM professor p WHERE p.professor_code = (SELECT ss.professor_code FROM open_subject ss WHERE ss.open_subject_code = st.open_subject_code))) as userName
+	FROM
+		final_result_complete_confirmaition st
+	WHERE 
+		st.student_code = #{studentCode}
+	</select>
+	<!-- 관리자 학생성적관리 수강과목 선택시 해당과목 성적출력 -->
+	<select id="adminStudentSubjectGrade"
+		parameterType="java.util.Map"
+		resultType="com.cyber.smedu.grade.domain.GradeDomain">
+	SELECT
+		 grade_code as gradeCode,
+		 grade_evaluation_category as gradeEvaluationCategory,
+		 grade_score as gradeScore,
+		 participation_state as participationState
+	FROM
+		grade
+	WHERE 
+		student_code = #{studentCode}
+	AND
+		open_subject_code = #{openSubjectCode}
+	</select>
+	<!-- 의기 -->
+<!-- 교수 담당과목을 select하는 쿼리 -->
+	<select id="professorSubjectSelect"
+		parameterType="String"
+		resultType="com.cyber.smedu.opensubject.domain.OpenSubjectDomain">
+
+	SELECT
+		open_subject_code AS openSubjectCode,
+		subject_code AS subjectCode,
+		cardinal_code AS cardinalCode,
+		subject_name AS subjectName
+	FROM
+		open_subject
+	WHERE
+		professor_code=#{professorCode}
+
+	</select>
+
+<!-- 교수 담당과목을 수강하는 학생의 정보를 select 하는 쿼리 -->
+	<select id="professorStudentInfoSelect"
+		parameterType="java.util.Map"
+		resultType="com.cyber.smedu.user.domain.UserDomain">
+	
+	SELECT
+		s.user_code AS userCode,
+		u.user_name AS userName,
+		u.user_phone AS userPhone,
+		u.user_address AS userAddress,
+		u.user_email AS userEmail
+	FROM
+		class_registration c
+	INNER JOIN
+		student s
+	ON
+		c.student_code = s.student_code
+	INNER JOIN
+		user u
+	ON
+		s.user_code = u.user_code
+	WHERE
+		open_subject_code = #{openSubjectCode}
+	AND 
+		pay_state = '결제완료'
+	<if test="searchWord != ''">
+		AND
+			u.user_name LIKE '%${searchWord}%'
+	</if>
+	
+
+	</select>
+
+
+	<!-- 교수 담당학생의 성적(중간,기말,과제,토론,출석) select 쿼리-->
+	<select id="professorStudentGradeSelect"
+		parameterType="String"
+		resultType="com.cyber.smedu.grade.domain.GradeDomain">
+		
+	SELECT 
+		grade_evaluation_category AS gradeEvaluationCategory,
+		grade_score AS gradeScore,
+		participation_state AS participationState
+	FROM
+		grade
+	WHERE
+		student_code = 
+		(
+		SELECT DISTINCT 
+			g.student_code 
+		FROM
+			student s
+		INNER JOIN
+			grade g
+		ON
+			s.student_code = g.student_code
+		WHERE 
+			user_code = #{userCode}
+		)
+	
+	</select>
+	
+	<!-- 교수 담당학생의 최종성적과 이수여부 select 쿼리 -->
+	<select id="professorStudentFinalGradeSelect"
+		parameterType="String"
+		resultType="com.cyber.smedu.grade.domain.FinalGradeDomain">
+		
+		SELECT 
+			final_result AS finalResult,
+			complete_confirmation AS completeConfirmation
+		FROM
+			final_result_complete_confirmaition
+		WHERE
+			student_code = 
+			(
+			SELECT 
+				student_code 
+			FROM
+				student
+			WHERE
+				user_code = #{userCode}
+			)
+	
+	</select>
+	
+	<select id="professorStudentNameAndCodeSelect"
+		parameterType="java.util.Map"
+		resultType="com.cyber.smedu.user.domain.StudentDomain">
+	
+	SELECT
+		s.user_code AS userCode,
+		u.user_name AS userName,
+		s.student_code AS studentCode,
+		c.open_subject_code AS openSubjectCode
+	FROM
+		class_registration c
+	INNER JOIN
+		student s
+	ON
+		c.student_code = s.student_code
+	INNER JOIN
+		user u
+	ON
+		s.user_code = u.user_code
+	WHERE
+		open_subject_code = #{openSubjectCode}
+	AND 
+		pay_state = '결제완료'
+	<if test="searchWord != ''">
+		AND
+			u.user_name LIKE '%${searchWord}%'
+	</if>	
+	
+
+	</select>
+	<!-- 우영 -->
+	
+	<!-- 한명의 학생 회원정보 -->
+	<select id="studentSelectOne" 
+			parameterType="String" 
+			resultType="com.cyber.smedu.user.domain.StudentDomain">
+		SELECT	
+			u.user_code AS userCode,
+			u.department_code AS departmentCode,
+			d.department_name AS departmentName,
+			u.user_id AS userId,
+			u.user_pw AS userPw,
+			u.user_name AS userName,
+			u.user_birth AS userBirth,
+			u.user_gender AS userGender,
+			u.user_address AS userAddress,
+			u.user_phone AS userPhone,
+			u.user_email AS userEmail,
+			u.user_educational AS userEducational,
+			u.user_state AS userState,
+			s.student_code AS studentCode,
+			s.cardinal_code AS cardinalCode,
+			s.student_path AS studentPath,
+			s.student_goal AS studentGoal
+		FROM 
+			user u 
+		INNER JOIN
+			student s
+		ON 
+			u.user_code = s.user_code
+		INNER JOIN 
+			department d
+		ON 
+			u.department_code = d.department_code
+		WHERE 
+			u.user_code = #{userCode}
+	</select>
+	
+	<select id="finalResultGrade"
+			parameterType="String"
+			resultType="com.cyber.smedu.grade.domain.FinalGradeDomain">
+			
+	SELECT	
+		(SELECT c.year FROM cardinal c WHERE st.cardinal_code=c.cardinal_code)as year,
+		(SELECT c.semester FROM cardinal c WHERE st.cardinal_code=c.cardinal_code) as semester,
+		(SELECT c.cardinal FROM cardinal c WHERE st.cardinal_code=c.cardinal_code) as cardinal,
+		(SELECT c.class_start_day FROM cardinal c WHERE st.cardinal_code=c.cardinal_code) as classStartDay,
+		(SELECT c.class_end_day FROM cardinal c WHERE st.cardinal_code=c.cardinal_code) as classEndDay,
+		(SELECT subject_sort FROM subject s WHERE s.subject_code = (SELECT subject_code FROM open_subject ss WHERE ss.open_subject_code = st.open_subject_code)) as subjectSort,
+		(SELECT subject_name FROM subject s WHERE s.subject_code = (SELECT subject_code FROM open_subject ss WHERE ss.open_subject_code = st.open_subject_code)) as subjectName,
+		(SELECT subject_credit FROM subject s WHERE s.subject_code = (SELECT subject_code FROM open_subject ss WHERE ss.open_subject_code = st.open_subject_code)) as subjectCredit,
+		st.final_result as finalResult,
+		st.complete_confirmation as completeConfirmation,
+		(SELECT user_name FROM user u WHERE u.user_code = (SELECT p.user_code FROM professor p WHERE p.professor_code = (SELECT ss.professor_code FROM open_subject ss WHERE ss.open_subject_code = st.open_subject_code))) as userName
+	FROM
+		final_result_complete_confirmaition st
+	WHERE 
+		st.student_code = #{studentCode}
+		
+	</select>
+	
+	<select id="creditManage"
+			parameterType="String"
+			resultType="com.cyber.smedu.grade.domain.GradeDomain">
+	select 
+		g.grade_code AS gradeCode,
+		g.student_code AS studentCode,
+		g.open_subject_code AS openSubjectCode,
+		o.subject_name AS subjectName,
+		g.grade_evaluation_category AS gradeEvaluationCategory,
+		g.grade_score AS gradeScore,
+		g.participation_state AS participationState
+	FROM
+		grade AS g
+	INNER JOIN
+		open_subject AS o
+	on
+		g.open_subject_code = o.open_subject_code		
+	WHERE
+		student_code = #{studentCode}
+	
+	</select>
+	<!-- 장용 -->
+
+</mapper>

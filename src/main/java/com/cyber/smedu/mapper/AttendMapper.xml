@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cyber.smedu.mapper.AttendMapper">
+	
+	<!-- 관리자 학생성적관리 수강과목선택시 해당과목 출석률 -->
+	<select id="adminStudentGradeAttendSelect"
+		parameterType="java.util.Map"
+		resultType="com.cyber.smedu.attend.domain.AttendDomain">		
+
+	SELECT
+		attend_code as attendCode,
+		academic_calendar_code AS academicCalendarCode,
+		attend_lecture_time AS attendLectureTime, 
+		attend_date AS attendDate, 
+		attend_complete_confirmation AS attendCompleteConfirmation, 
+		attend_score AS attendScore
+	FROM
+		attend
+	WHERE
+		student_code = #{studentCode}
+	AND
+		open_subject_code = #{openSubjectCode}
+	
+	</select>
+	
+	<!-- 의기 -->
+	<select id="professorStudentNameSelect"
+		parameterType="String"
+		resultType="com.cyber.smedu.user.domain.UserDomain">
+		
+	<!-- 유저 정보 select 쿼리 -->
+	SELECT 
+		user_name AS userName	 
+	FROM
+		user
+	WHERE
+		user_code = 
+		(
+		SELECT 
+			user_code 
+		FROM
+			student
+		WHERE
+			student_code = #{studentCode}
+		)
+	
+	</select>
+	
+	<select id="professorOpenSubjectNameSelect"
+		parameterType="String"
+		resultType="com.cyber.smedu.opensubject.domain.OpenSubjectDomain">
+		
+	<!-- 개설과목명 select 쿼리 -->
+	SELECT
+		subject_name AS subjectName
+	FROM
+		open_subject
+	WHERE
+		open_subject_code = #{openSubjectCode}
+	
+	</select>
+	
+	<select id="professorStudentWeeklyScheduleSelect"
+		parameterType="String"
+		resultType="com.cyber.smedu.academiccalendar.domain.AcademicCalendarDomain">
+		
+		
+	<!-- 주차일정 select 쿼리 <List> -->
+	select
+		weekly_schedule AS weeklySchedule,
+		academic_calendar_code AS academicCalendarCode
+	from
+		academic_calendar
+	where
+		cardinal_code = 
+		(
+		select 
+			cardinal_code 
+		from
+			open_subject
+		where
+			open_subject_code = #{openSubjectCode}
+		)
+	
+	</select>
+	
+	<select id="professorStudentAttendInfoSelect"
+		parameterType="String"
+		resultType="com.cyber.smedu.attend.domain.AttendDomain">
+		
+	<!-- 수강시간 / 출석날짜 / 출석점수 select 쿼리 <List> -->
+
+	SELECT 
+		academic_calendar_code AS academicCalendarCode,
+		attend_lecture_time AS attendLectureTime, 
+		attend_date AS attendDate, 
+		attend_complete_confirmation AS attendCompleteConfirmation, 
+		attend_score AS attendScore
+	FROM
+		attend
+	WHERE
+		student_code = #{studentCode}
+	
+	</select>
+	
+	<!-- 우영 -->
+	<update id="examAttendUpdate"
+		parameterType="String">
+	UPDATE attend
+	SET
+		attend_complete_confirmation='T'
+	WHERE 
+		attend_code = #{attendCode}		
+
+</update>
+
+<select id="studentAttend"
+		parameterType="com.cyber.smedu.attend.domain.AttendDomain"
+		resultType="com.cyber.smedu.attend.domain.AttendDomain">
+	SELECT
+		attend_code AS attendCode,
+		attend_lecture_time AS attendLectureTime,
+		attend_complete_confirmation AS attendCompleteConfirmation
+	FROM
+		attend
+	WHERE
+		student_code = #{studentCode}	AND	lecture_code = #{lectureCode}
+
+
+</select>
+
+<update id="lectureAttendUpdate"
+		parameterType="com.cyber.smedu.attend.domain.AttendDomain">
+	UPDATE attend
+		SET
+			attend_lecture_time=#{attendLectureTime},
+			attend_date=NOW(),
+			attend_complete_confirmation=#{attendCompleteConfirmation},
+			attend_score=#{attendScore}
+	WHERE 
+		attend_code=#{attendCode}
+</update>
+	<!-- 장용 -->
+
+
+</mapper>

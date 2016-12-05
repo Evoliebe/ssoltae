@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cyber.smedu.mapper.DebateMapper">
+	
+	<!-- 관리자 학생성적관리 토론 채점점수 -->
+	<select id="adminStudentGradeSubjectDebateScoreSelect"
+		parameterType="java.util.Map"
+		resultType="com.cyber.smedu.debate.domain.DebateScoreDomain">	
+	SELECT 
+		debate_score as debateScore,
+		debate_score_date as debateScoreDate,
+		debate_score_code as debateScoreCode
+	FROM
+		debate_score
+	WHERE
+		debate_code = #{debateCode}
+	AND
+		student_code = #{studentCode}
+	
+	</select>
+	
+	<!-- 관리자 학생성적관리 토론 답변 -->
+	<select id="adminStudentGradeSubjectDebateResultSelect"
+		parameterType="java.util.Map"
+		resultType="com.cyber.smedu.debate.domain.DebateResultDomain">	
+	SELECT 
+		debate_result_code as debateResultCode,
+		debate_code as debateCode,
+		student_code as studentCode,
+		debate_comment as debateComment,
+		debate_register_date as debateRegisterDate
+	FROM
+		debate_result
+	WHERE
+		debate_code = #{debateCode}
+	AND
+		student_code = #{studentCode}
+	
+	</select>
+<!-- 의기 -->
+	<select id="professorStudentDebateCommentAndDateSelect"
+		parameterType="String"
+		resultType="com.cyber.smedu.debate.domain.DebateResultDomain">
+	
+	SELECT
+		u.user_code AS userCode,
+		u.user_name AS userName,
+		d.student_code AS studentCode,
+		d.debate_comment AS debateComment,
+		d.debate_register_date AS debateRegisterDate
+	FROM
+		class_registration c
+	INNER JOIN
+		student s
+	ON
+		c.student_code = s.student_code
+	INNER JOIN
+		user u
+	ON
+		s.user_code = u.user_code
+	INNER JOIN
+		debate_result d
+	ON
+		d.student_code = s.student_code
+	WHERE
+		open_subject_code = #{openSubjectCode}
+	AND 
+		pay_state = '결제완료'
+	ORDER BY
+		d.debate_register_date ASC
+	
+	</select>
+	
+	<select id="professorStudentDebateSubjectAndContentSelect"
+		parameterType="String"
+		resultType="com.cyber.smedu.debate.domain.DebateDomain">
+	
+	SELECT
+		debate_code AS debateCode,
+		debate_subject AS debateSubject,
+		debate_content AS debateContent,
+		debate_register_date AS debateRegisterDate
+	FROM
+		debate
+	WHERE
+		open_subject_code = #{openSubjectCode}
+	
+	</select>
+	
+	<select id="professorSubjectSelectForDebate"
+		parameterType="String"
+		resultType="com.cyber.smedu.opensubject.domain.OpenSubjectDomain">
+		
+	SELECT
+		open_subject_code AS openSubjectCode,
+		subject_code AS subjectCode,
+		cardinal_code AS cardinalCode,
+		professor_code AS professorCode,
+		subject_name AS subjectName
+	FROM
+		open_subject
+	WHERE
+		professor_code = #{professorCode}
+		
+	</select>
+	
+	<select id="professorDebateSelect"
+		parameterType="String"
+		resultType="com.cyber.smedu.debate.domain.DebateDomain">
+		
+	SELECT
+		debate_code AS debateCode,
+		professor_code AS professorCode,
+		open_subject_code AS openSubjectCode,
+		academic_calendar_code AS academicCalendarCode,
+		debate_subject AS debateSubject,
+		debate_content AS debateContent,
+		debate_register_date AS debateRegisterDate
+	FROM
+		debate
+	WHERE
+		open_subject_code = #{openSubjectCode}
+	</select>
+	
+	<update id="professorDebateUpdate"
+		parameterType="com.cyber.smedu.debate.domain.DebateDomain">
+		
+	UPDATE 
+		debate
+	SET
+		debate_subject = #{debateSubject},
+		debate_content = #{debateContent}
+	WHERE
+		debate_code = #{debateCode}
+		
+	</update>
+
+<!-- 토론 insert 쿼리 -->	
+	<insert id="professorDebateInsert"
+		parameterType="com.cyber.smedu.debate.domain.DebateDomain">
+	
+	INSERT INTO 
+		debate
+		(
+		debate_code, 
+		professor_code, 
+		open_subject_code, 
+		academic_calendar_code, 
+		debate_subject, 
+		debate_content, 
+		debate_register_date
+		)
+	VALUES 
+		(
+		CONCAT('debate_code',(SELECT COUNT(d.debate_code)+1 FROM debate d)),
+		(SELECT professor_code FROM open_subject WHERE open_subject_code = #{openSubjectCode}),
+		#{openSubjectCode},
+		(SELECT a.academic_calendar_code FROM open_subject o INNER JOIN academic_calendar a
+		ON o.cardinal_code = a.cardinal_code WHERE open_subject_code = #{openSubjectCode} LIMIT 1 OFFSET 7),
+		#{debateSubject}, 
+		#{debateContent}, 
+		NOW()
+		)
+	
+	</insert>
+	<!-- 토론 채점 버튼 클릭시 grade 테이블 update  -->
+	<update id="debateScoreAndParticipationUpdate"
+		parameterType="com.cyber.smedu.debate.domain.DebateScoreDomain">
+	UPDATE 
+		grade
+	SET
+		grade_score = #{debateScore},
+		participation_state = 'T'
+	WHERE 
+		open_subject_code = #{openSubjectCode}
+	AND
+		student_code = #{studentCode}
+	AND
+		grade_evaluation_category = '토론(15점)'
+	
+	</update>
+	
+	<!-- 토론 채점 버튼 클릭시 debate_score 테이블 insert -->
+	<insert id="debateMarkingInsert"
+		parameterType="com.cyber.smedu.debate.domain.DebateScoreDomain">
+	INSERT INTO debate_score
+		(
+		debate_score_code, 
+		professor_code, 
+		debate_code, 
+		student_code, 
+		debate_score, 
+		debate_score_date
+		)
+	VALUES 
+		(
+		CONCAT('debate_score_code',(SELECT COUNT(d.debate_score_code)+1 FROM debate_score d)), 
+		(SELECT professor_code FROM debate WHERE open_subject_code = #{openSubjectCode}), 
+		(SELECT debate_code FROM debate WHERE open_subject_code = #{openSubjectCode}) , 
+		#{studentCode}, 
+		#{debateScore}, 
+		NOW()
+		)
+	</insert>
+	
+	<!-- 토론 채점 클릭시 final_result_complete_confirmaition 테이블 update -->
+	<update id="finalGradeUpdateForDebate"
+		parameterType="com.cyber.smedu.debate.domain.DebateScoreDomain">
+	
+	UPDATE 
+		final_result_complete_confirmaition
+	SET
+		final_result = (SELECT SUM(grade_score) FROM grade WHERE student_code = #{studentCode} AND open_subject_code = #{openSubjectCode}),
+		complete_confirmation = 
+		IF((SELECT SUM(grade_score) FROM grade WHERE student_code = #{studentCode} AND open_subject_code = #{openSubjectCode})>=60,'T','F')
+	WHERE 
+		student_code = #{studentCode}
+	AND
+		open_subject_code = #{openSubjectCode}
+			
+	</update>
+	
+	<!-- 토론 채점 클릭시 debateScoreCode select 해서 보여지는 화면 다르게하기 -->
+	<select id="professorDebateScoreAndCodeSelect"
+		parameterType="com.cyber.smedu.grade.domain.GradeDomain"
+		resultType="com.cyber.smedu.debate.domain.DebateScoreDomain">
+		
+	SELECT 
+		ds.debate_score_code AS debateScoreCode,
+		ds.debate_score AS debateScore,
+		d.open_subject_code AS openSubjectCode
+	FROM 
+		debate_score ds
+	INNER JOIN
+		debate d
+	ON
+		ds.debate_code = d.debate_code
+	WHERE
+		ds.student_code = #{studentCode}
+	AND
+		d.open_subject_code = #{openSubjectCode}
+	</select>
+	<!-- 우영 -->
+	<select id="oneDebateList"
+		parameterType="String"
+		resultType="com.cyber.smedu.debate.domain.DebateDomain">
+	SELECT
+		debate_code AS debateCode,
+		open_subject_code AS professorCode,
+		open_subject_code AS openSubjectCode,
+		academic_calendar_code AS academicCalendarCode,
+		debate_subject AS debateSubject,
+		debate_content AS debateContent,
+		debate_register_date AS debateRegisterDate
+	FROM
+		debate
+	WHERE
+		open_subject_code =#{openSubjectCode}
+
+</select>
+
+<select id="debateResultList"
+		parameterType="String"
+		resultType="com.cyber.smedu.debate.domain.DebateResultDomain">
+
+SELECT
+	dr.debate_comment AS debateComment,
+	dr.debate_register_date AS debateRegisterDate,
+	u.user_code AS userCode,
+	u.user_name AS userName
+FROM
+	debate_result dr
+inner join
+	student s
+on
+	dr.student_code = s.student_code
+inner join
+	user u
+on
+	u.user_code = s.user_code
+where
+	dr.debate_code = #{debateCode}
+
+</select>
+
+
+<!-- //////////////////11.10 입력 -->
+	<insert id="debateResultAdd"
+			parameterType="com.cyber.smedu.debate.domain.DebateResultDomain">
+	INSERT INTO debate_result
+			(
+			debate_result_code, 
+			debate_code, 
+			student_code, 
+			debate_comment, 
+			debate_register_date
+			)
+		VALUES 
+			(
+			CONCAT('debate_result_code',(SELECT COUNT(r.debate_result_code)+1 FROM debate_result r)),
+			#{debateCode}, 
+			#{studentCode}, 
+			#{debateComment}, 
+			NOW()
+			)	
+	</insert>
+<!-- 장용 -->
+	<select id="selectPlannerStudentDebateList"
+		parameterType="java.util.Map"
+		resultType="com.cyber.smedu.debate.domain.DebateResultDomain">
+	SELECT
+		dr.debate_register_date as debateRegisterDate
+	FROM
+		debate d
+	INNER JOIN
+		debate_result dr
+	ON
+		d.debate_code = dr.debate_code
+	WHERE
+		d.open_subject_code = #{openSubjectCode}
+	AND
+		dr.student_code = #{studentCode}
+	</select>
+	
+
+</mapper>

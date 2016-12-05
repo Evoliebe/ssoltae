@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cyber.smedu.mapper.CurriculumMapper">
+	<!-- 학과 리스트 출력 -->
+	<select id="selectDepartmentList" resultType="com.cyber.smedu.curriculum.domain.DepartmentDomain">
+	SELECT
+		department_code as departmentCode,
+		department_name as departmentName
+	FROM
+		department
+	</select>
+	<!-- 학과코드에 해당하는 학과 출력 -->
+	<select id="selectDepartmentOne" parameterType="String" resultType="com.cyber.smedu.curriculum.domain.DepartmentDomain">
+	SELECT
+		department_code as departmentCode,
+		department_name as departmentName
+	FROM
+		department
+	WHERE
+		department_code = #{departmentCode}
+	</select>
+	<select id="adminSubjectList" parameterType="java.util.Map" resultType="com.cyber.smedu.curriculum.domain.SubjectDomain" >
+		SELECT 
+			s.subject_code as subjectCode, 
+			s.department_code as departmentCode, 
+			d.department_name as departmentName, 
+			s.subject_name as subjectName, 
+			s.subject_sort as subjectSort, 
+			s.subject_pay as subjectPay, 
+			s.subject_credit as subjectCredit,
+			s.subject_date as subjectDate,
+			s.subject_state as subjectState
+		FROM 
+			subject s
+		INNER JOIN
+			department d
+		ON
+			s.department_code = d.department_code
+		<where>
+			<if test="departmentCode != ''">
+				s.department_code = #{departmentCode}
+			</if>
+			<if test="subjectName != ''">
+				AND
+					s.subject_name LIKE '%${subjectName}%'
+			</if>
+			<if test="subjectState != ''">
+				AND
+					s.subject_state = #{subjectState}
+			</if>
+		</where>
+	</select>
+	<!-- 의기 -->
+	
+	<select id="subjectList" parameterType="java.util.Map" resultType="com.cyber.smedu.curriculum.domain.SubjectDomain" >
+		SELECT 
+			s.subject_code as subjectCode, 
+			s.department_code as departmentCode, 
+			d.department_name as departmentName, 
+			s.subject_name as subjectName, 
+			s.subject_sort as subjectSort, 
+			s.subject_pay as subjectPay, 
+			s.subject_credit as subjectCredit,
+			s.subject_date as subjectDate,
+			s.subject_state as subjectState
+		FROM 
+			subject s
+		INNER JOIN
+			department d
+		ON
+			s.department_code = d.department_code
+	</select>
+	
+	<select id="subjectSelectInfo" parameterType="String" resultType="com.cyber.smedu.curriculum.domain.SubjectDomain">
+		SELECT 
+			subject_code AS subjectCode, 
+			department_code AS departmentCode, 
+			subject_name AS subjectName, 
+			subject_sort AS subjectSort, 
+			subject_pay AS subjectPay, 
+			subject_credit AS subjectCredit, 
+			subject_summary AS subjectSummary, 
+			subject_goal AS subjectGoal
+		FROM 
+			subject
+		WHERE
+			subject_code = #{subjectCode}
+	</select>
+	<!-- 현호 -->
+</mapper>

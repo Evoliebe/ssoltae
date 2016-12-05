@@ -1,0 +1,363 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cyber.smedu.mapper.TaskMapper">
+
+<select id="adminStudentGradeTaskResult"
+	parameterType="java.util.Map"
+	resultType="com.cyber.smedu.task.domain.TaskResultDomain">
+	
+SELECT 
+	t.task_subject AS taskSubject,
+	t.task_content AS taskContent,
+	t.task_register_date AS taskRegisterDate,
+	tr.task_result_title AS taskResultTitle,
+	tr.task_result_content AS taskResultContent,
+	tr.task_file_name AS taskFileName,
+	tr.task_origin_file_name AS taskOriginFileName,
+	tr.task_file_ext AS taskFileExt,
+	tr.task_file_size AS taskFileSize,
+	tr.task_result_date AS taskResultDate,
+	ts.task_score AS taskScore,
+	ts.task_score_date AS taskScoreDate
+FROM
+	open_subject o
+INNER JOIN
+	task t
+ON
+	o.open_subject_code = t.open_subject_code
+INNER JOIN
+	task_result tr
+ON
+	t.task_code = tr.task_code
+INNER JOIN
+	task_score ts
+ON
+	tr.student_code = ts.student_code
+WHERE
+	tr.student_code = #{studentCode}
+AND
+	t.open_subject_code = #{openSubjectCode}
+
+</select>
+<!-- 의기 -->
+
+<select id="professorStudentTaskResultDetail"
+		parameterType="String"
+		resultType="com.cyber.smedu.task.domain.TaskResultDomain">
+	
+	SELECT 
+		t.task_subject AS taskSubject,
+		tr.task_result_title AS taskResultTitle,
+		tr.task_result_content AS taskResultContent,
+		tr.task_file_name AS taskFileName,
+		tr.task_origin_file_name AS taskOriginFileName,
+		tr.task_file_ext AS taskFileExt,
+		tr.task_file_size AS taskFileSize,
+		tr.task_result_date AS taskResultDate
+	FROM
+		open_subject o
+	INNER JOIN
+		task t
+	ON
+		o.open_subject_code = t.open_subject_code
+	INNER JOIN
+		task_result tr
+	ON
+		t.task_code = tr.task_code
+	WHERE
+		tr.student_code = #{studentCode}
+	
+	</select>
+	
+	<!-- 과제관리를 위한 담당 과목 select -->
+	<select id="professorSubjectSelectForTask"
+		parameterType="String"
+		resultType="com.cyber.smedu.opensubject.domain.OpenSubjectDomain">
+	
+	SELECT
+		open_subject_code AS openSubjectCode,
+		subject_code AS subjectCode,
+		cardinal_code AS cardinalCode,
+		subject_name AS subjectName
+	FROM
+		open_subject
+	WHERE
+		professor_code = #{professorCode}
+	
+	</select>
+	
+	<!-- 해당 과목의 과제 정보 select -->
+	<select id="professorTaskSelect"
+		parameterType="String"
+		resultType="com.cyber.smedu.task.domain.TaskDomain">
+		
+	SELECT
+		task_code AS taskCode,
+		task_subject AS taskSubject,
+		task_content AS taskContent,
+		task_register_date AS taskRegisterDate
+	FROM
+		task
+	WHERE
+		open_subject_code = #{openSubjectCode}
+		
+	</select>
+
+	<update id="professorTaskUpdate"
+		parameterType="com.cyber.smedu.task.domain.TaskDomain">
+		
+	UPDATE 
+		task
+	SET
+		task_subject = #{taskSubject},
+		task_content = #{taskContent}
+	WHERE 
+		task_code = #{taskCode}
+	
+	</update>
+	
+	<insert id="professorTaskInsert"
+		parameterType="com.cyber.smedu.task.domain.TaskDomain">
+		
+	INSERT INTO 
+		task
+		(
+		task_code, 
+		professor_code, 
+		open_subject_code, 
+		academic_calendar_code, 
+		task_subject, 
+		task_content, 
+		task_register_date
+		)
+	VALUES 
+		(
+		CONCAT('task_code',(SELECT COUNT(t.task_code)+1 FROM task t)),
+		(SELECT professor_code FROM open_subject WHERE open_subject_code = #{openSubjectCode}),
+		#{openSubjectCode},
+		(SELECT a.academic_calendar_code FROM open_subject o INNER JOIN academic_calendar a
+		ON o.cardinal_code = a.cardinal_code WHERE open_subject_code = #{openSubjectCode} LIMIT 1 OFFSET 2),
+		${taskSubject}, 
+		${taskContent}, 
+		NOW()
+		)
+	
+	</insert>
+	
+	<!-- grade table update -->
+	<update id="taskScoreAndParticipationUpdate"
+		parameterType="com.cyber.smedu.task.domain.TaskScoreDomain">
+		
+	UPDATE 
+		grade
+	SET
+		grade_score = #{taskScore},
+		participation_state = 'T'
+	WHERE 
+		open_subject_code = #{openSubjectCode}
+	AND
+		student_code = #{studentCode}
+	AND
+		grade_evaluation_category = '과제(15점)'
+	
+	</update>
+	
+	<!-- task_score tabel insert -->
+	<insert id="taskMarkingInsert"
+		parameterType="com.cyber.smedu.task.domain.TaskScoreDomain">
+	INSERT INTO task_score
+		(
+		task_score_code, 
+		student_code, 
+		task_code, 
+		professor_code, 
+		task_score, 
+		task_score_date
+		)
+	VALUES 
+		(
+		CONCAT('task_score_code',(SELECT COUNT(t.task_score_code)+1 FROM task_score t)), 
+		#{studentCode}, 
+		(SELECT task_code FROM task WHERE open_subject_code = #{openSubjectCode}) , 
+		(SELECT professor_code FROM task WHERE open_subject_code = #{openSubjectCode}), 
+		#{taskScore}, 
+		NOW()
+		)
+	
+	</insert>
+	
+	<!-- final_result_complete_confirmaition table update -->
+	<update id="finalGradeUpdateForTask"
+		parameterType="com.cyber.smedu.task.domain.TaskScoreDomain">
+		
+	UPDATE 
+		final_result_complete_confirmaition
+	SET
+		final_result = (SELECT SUM(grade_score) FROM grade WHERE student_code = #{studentCode} AND open_subject_code = #{openSubjectCode}),
+		complete_confirmation = 
+		IF((SELECT SUM(grade_score) FROM grade WHERE student_code = #{studentCode} AND open_subject_code = #{openSubjectCode})>=60,'T','F')
+	WHERE 
+		student_code = #{studentCode}
+	AND
+		open_subject_code = #{openSubjectCode}
+	
+	</update>
+	<select id="professorTaskScoreAndCodeSelect"
+		parameterType="com.cyber.smedu.grade.domain.GradeDomain"
+		resultType="com.cyber.smedu.task.domain.TaskScoreDomain">
+	
+	SELECT 
+		ts.task_score_code AS taskScoreCode,
+		ts.task_score AS taskScore,
+		t.open_subject_code AS openSubjectCode
+	FROM 
+		task_score ts
+	INNER JOIN
+		task t
+	ON
+		ts.task_code = t.task_code
+	WHERE
+		ts.student_code = #{studentCode}
+	AND
+		t.open_subject_code = #{openSubjectCode}
+	
+	</select>
+	
+	<!-- 우영 -->
+<!-- 과제 참여에서 과목 선택시 주제 내용 받아오기 -->
+	<!-- 과제 참여에서 과목 선택시 주제 내용 받아오기 -->
+	<select id="oneTaskView"
+			parameterType="String"
+			resultType="com.cyber.smedu.task.domain.TaskDomain">
+	SELECT
+		task_code AS taskCode,
+		professor_code AS professorCode,
+		open_subject_code AS openSubjectCode,
+		academic_calendar_code AS academicCalendarCode,
+		task_subject AS taskSubject,
+		task_content AS taskContent,
+		task_register_date AS taskRegisterDate
+	FROM 
+		task
+	WHERE
+		open_subject_code = #{openSubjectCode}					
+	</select>
+	
+	
+	<!-- 학생이 과제를 업로드시 db저장 -->
+	<insert id="taskResultAdd"
+			parameterType="com.cyber.smedu.task.repository.TaskDao">
+	INSERT INTO task_result
+		(
+		task_result_code, 
+		task_code, 
+		student_code, 
+		task_result_title, 
+		task_result_content, 
+		task_result_date, 
+		task_file_name, 
+		task_file_ext, 
+		task_file_size, 
+		task_file_type, 
+		task_origin_file_name
+		)
+	VALUES 
+		(
+		CONCAT('task_result_code',(SELECT COUNT(t.task_result_code)+1 FROM task_result t)), 
+		#{taskCode},
+		#{studentCode}, 
+		#{taskResultTitle}, 
+		#{taskResultContent}, 
+		NOW(), 
+		#{taskFileName}, 
+		#{taskFileExt},
+		#{taskFileSize}, 
+		#{taskFileType}, 
+		#{taskOriginFileName}
+		)		
+	</insert>
+	
+	
+	<!-- 
+	1.이미 제출을 했으면 제출한 목록을 받아오기
+	2.학생이 과제 업로드시 이미 해당과목의 과제를 업로드한 사람인지 체크
+	 -->
+	<select id="studentTaskResultCheck"
+			parameterType="com.cyber.smedu.task.domain.TaskResultDomain"
+			resultType="com.cyber.smedu.task.domain.TaskResultDomain">
+	SELECT
+		task_result_code AS taskResultCode, 
+		task_code AS taskCode, 
+		student_code AS studentCode, 
+		task_result_title AS taskResultTitle, 
+		task_result_content AS taskResultContent, 
+		task_result_date AS taskResultDate, 
+		task_file_name AS taskFileName, 
+		task_file_ext AS taskFileExt, 
+		task_file_size AS taskFileSize, 
+		task_file_type AS taskFileType, 
+		task_origin_file_name AS taskOriginFileName
+	FROM
+		task_result
+	WHERE
+		student_code = #{studentCode} AND task_code= #{taskCode}
+	</select>
+	
+	
+	<!-- 하나의 과제제출 리스트 받아오기 -->
+	<select id="taskSubmitUpdateDetail"
+			parameterType="String"
+			resultType="com.cyber.smedu.task.domain.TaskResultDomain">
+	
+	SELECT
+		task_result_code AS taskResultCode, 
+		task_code AS taskCode, 
+		student_code AS studentCode, 
+		task_result_title AS taskResultTitle, 
+		task_result_content AS taskResultContent, 
+		task_result_date AS taskResultDate, 
+		task_file_name AS taskFileName, 
+		task_file_ext AS taskFileExt, 
+		task_file_size AS taskFileSize, 
+		task_file_type AS taskFileType, 
+		task_origin_file_name AS taskOriginFileName
+	FROM
+		task_result
+	WHERE
+		task_result_code = #{taskResultCode}
+	</select>
+	
+	
+	<!-- 파일 업로드는 안하고 내용만 변경할 경우 -->
+	<update id="taskResultContentUpdate"
+			parameterType="com.cyber.smedu.task.domain.TaskResultDomain">
+	UPDATE task_result
+	SET
+		task_result_title=#{taskResultTitle},
+		task_result_content=#{taskResultContent}
+	WHERE 
+		task_result_code = #{taskResultCode};
+	</update>
+	
+	<update id="taskResultFullUpdate"
+			parameterType="com.cyber.smedu.task.domain.TaskResultDomain">
+	UPDATE task_result
+	SET
+		task_result_title=#{taskResultTitle},
+		task_result_content=#{taskResultContent},
+		task_result_date=NOW(),
+		task_file_name=#{taskFileName},
+		task_file_ext=#{taskFileExt},
+		task_file_size=#{taskFileSize},
+		task_file_type=#{taskFileType},
+		task_origin_file_name=#{taskOriginFileName}
+	WHERE
+		task_result_code = #{taskResultCode} 
+	
+	
+	</update>
+	<!-- 장용 -->
+
+</mapper>
